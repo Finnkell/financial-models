@@ -60,5 +60,25 @@ class Agent:
 
         return np.argmax(options[0])
 
-    
+    def exp_replay(self, batch_size):
+        mini_batch = []
+        memory_size = len(self.memory)
+
+        for i in range(memory_size - batch_size + 1, memory_size):
+            mini_batch.append(self.memory[i])
+
+        for state, action, reward, next_state, done in mini_batch:
+            target = reward
+
+            if not done:
+                target = reward + self.gamma*np.amax(self.model.predict(next_state)[0])
+
+            target_f = self.model.predict(state)
+
+            target_f[0][action] = target
+
+            self.model.fit(state, target_f, epochs=1, verbose=True)
+
+
+
         
