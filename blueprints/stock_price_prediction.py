@@ -263,6 +263,6 @@ predicted_tuned = model_fit_tuned.predict(start=tr_len -1, end=to_len -1, exog=X
 
 from pickle import dump, Pickler
 
-filename = 'finalized_model.pkl'
+filename = 'models/finalized_model.pkl'
 
 dump(model_ARIMA_tuned, open(filename, 'wb'))
