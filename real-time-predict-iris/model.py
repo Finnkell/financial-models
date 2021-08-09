@@ -19,5 +19,5 @@ print("Score on the test set is: {:.2}".format(model.score(X_test, y_test)))
 
 # Save the model
 model_filename = 'iris.pkl'
-print("Saving model to {}...".format(model_filename))
+print(f"Saving model to {model_filename}...")
 joblib.dump(model, model_filename)
