@@ -1,11 +1,15 @@
 from __future__ import absolute_import
 
 import MetaTrader5 as mt5
-from sklearn.svm import SVR
+from sklearn.linear_model import BayesianRidge
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
+from datetime import datetime
+from time import sleep
+import os
+
 
 def RSI(data, period, applied_price='<CLOSE>'):
     dataframe = pd.DataFrame(data)
@@ -53,36 +57,136 @@ class IFR2Strategy(object):
         pass
 
 
-class MT5DataFeedback(object):
+class MT5DataFeed(object):
     def __init__(self):
-        pass
+        mt5.initialize()
 
     def _get_ohlc(self):
-        pass
+        return mt5.copy_rates_from('WINV21', mt5.TIMEFRAME_M1, datetime.now(), 100)
+
+    def _get_volume(self):
+        return mt5.copy_ticks_from('WINV21', datetime.now(), 100, mt5.COPY_TICKS_TRADE)['volume']
+
+
+def dia_operar(date_now):
+
+    time_now = date_now
+
+    if time_now.hour >= 16 or time_now.hour < 9:
+        return False
+
+    return True
 
 
 def main():
-    data = pd.read_csv('database/NEW_OHLC_B3SA3_BOV_T.csv', sep=',')
+    data = pd.read_csv('database/R_OHLC_WIN$N_BMF_T.csv', sep=',')
 
     data = RSI(data, 2, '<CLOSE>')
 
-    train_index = int(data.shape[0] * (1 - 0.2))
+    data = data.set_index('<DATE>_<TIME>')
+    
+    y = pd.DataFrame()
 
-    X_train, X_test = data[['<UP>', '<DOWN>', '<CLOSE>']][:train_index].fillna(0), data[['<UP>', '<DOWN>', '<CLOSE>']][train_index:len(data)].fillna(0)
-    y_train, y_test = data[['<RSI>']][:train_index].fillna(0).to_numpy(), data[['<RSI>']][train_index:len(data)].fillna(0).to_numpy()
+    y['<RSI>'] = data['<RSI>']
+    
+    data = data.drop(['<TICK>', '<VFL>', '<UP>', '<DOWN>', '<RSI>'], axis=1)
 
     scaler = MinMaxScaler(feature_range=(0, 1))
+    scaler.fit(data)
+    data_scaled = pd.DataFrame(scaler.transform(data)).rename(columns={0: '<OPEN>', 1: '<HIGH>', 2: '<LOW>', 3: '<CLOSE>', 4: '<VOL>'}).fillna(0)
 
-    scaler.fit(X_train, y_train)
+    train_index = int(data_scaled.shape[0] * (1 - 0.2))
 
-    X_scaled = scaler.transform(X_train)
+    X_train, X_test = data_scaled[['<OPEN>', '<HIGH>', '<LOW>', '<CLOSE>', '<VOL>']][:train_index].fillna(0), data_scaled[['<OPEN>', '<HIGH>', '<LOW>', '<CLOSE>', '<VOL>']][train_index:len(data_scaled)].fillna(0)
+    y_train, y_test = y[['<RSI>']][:train_index].fillna(0), y[['<RSI>']][train_index:len(y)].fillna(0)
 
-    model = SVR(kernel='linear', verbose=True)
+    model = BayesianRidge()
 
-    model.fit(X_scaled, y_train)
+    model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
 
-    print(model.score(y_test, y_pred))
+    from sklearn.metrics import mean_squared_error
+
+    print(f'Model score: {mean_squared_error(y_test, y_pred)} RMSE')
+
+    server = MT5DataFeed()
+
+    indicator = []
+    saved = False
+    last_ohlc = [(1,)]
+
+    while True:
+
+        while dia_operar(datetime.now()):
+
+            saved = False
+
+            ohlc = server._get_ohlc()
+            volume = server._get_volume()
+
+            if len(volume) == 0:
+                pass
+            else:
+                if last_ohlc[0][0] != ohlc[0][0]:
+                    scaled = scaler.transform([(ohlc[0][1], ohlc[0][2], ohlc[0][3], ohlc[0][4], volume[-1])])
+                    pred = model.predict(scaled)
+                    indicator.append(pred)
+                    last_ohlc = ohlc
+                    print(pred)
+
+                    if pred[0] >= 70:
+                        price = mt5.symbol_info('WINV21').ask
+
+                        request = {
+                            "action": mt5.TRADE_ACTION_DEAL,
+                            "symbol": 'WINV21',
+                            "volume": 1.0,
+                            "type": mt5.ORDER_TYPE_SELL,
+                            "price": price,
+                            "sl": price + 100,
+                            "tp": price - 200,
+                            "deviation": 1,
+                            "magic": 234000,
+                            "comment": "python script open",
+                            "type_time": mt5.ORDER_TIME_GTC,
+                            "type_filling": mt5.ORDER_FILLING_RETURN,
+                        }
+
+                        mt5.order_send(request)
+
+                    elif pred[0] <= 30:
+                        price = mt5.symbol_info('WINV21').bid
+
+                        request = {
+                            "action": mt5.TRADE_ACTION_DEAL,
+                            "symbol": 'WINV21',
+                            "volume": 1.0,
+                            "type": mt5.ORDER_TYPE_BUY,
+                            "price": price,
+                            "sl": price - 100,
+                            "tp": price + 200,
+                            "deviation": 1,
+                            "magic": 234000,
+                            "comment": "python script open",
+                            "type_time": mt5.ORDER_TIME_GTC,
+                            "type_filling": mt5.ORDER_FILLING_RETURN,
+                        }
+
+                        mt5.order_send(request)
+                else:
+                    pass
+        
+        
+
+        if (os.path.exists(f'plots/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}')):
+            pass
+        elif not saved:
+            indicator = pd.DataFrame(indicator)
+            indicator[0].plot()
+            plt.savefig(f'plots/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}.png')
+            saved = True
+        else:
+            pass
 
 
 if __name__ == '__main__':

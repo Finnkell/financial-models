@@ -63,20 +63,19 @@ Xtest, ytest = (np.array(x_test_list), np.array(y_test_list))
 Xtest = np.reshape(Xtest, (Xtest.shape[0], Xtest.shape[1], Xtest.shape[2]))
 
 
-from keras.models import Sequential
-from keras.layers import LSTM, Dense
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
 
 model = Sequential()
 model.add(LSTM(4, input_shape=(Xtrain.shape[1], Xtrain.shape[2])))
+model.add(Dense(26))
 model.add(Dense(1))
 
 model.compile(loss='mean_squared_error', optimizer='adam')
 
-model.fit(Xtrain, ytrain, epochs=100, validation_data=(Xtest, ytest), batch_size=16, verbose=True)
+model.fit(Xtrain, ytrain, epochs=1, validation_data=(Xtest, ytest), batch_size=160, verbose=True)
 
-print(model.summary())
-
-train_pred = model.predict(ytrain)
+train_pred = model.predict_on_batch(ytrain)
 test_pred = model.predict(ytest)
 
 train_pred = np.c_[train_pred, np.zeros(train_pred.shape)] # concat
