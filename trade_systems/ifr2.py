@@ -5,6 +5,7 @@ from sklearn.svm import SVR
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
 
 def RSI(data, period, applied_price='<CLOSE>'):
     dataframe = pd.DataFrame(data)
@@ -67,18 +68,18 @@ def main():
 
     train_index = int(data.shape[0] * (1 - 0.2))
 
-    X_train, X_test = data[['<UP>', '<DOWN>', '<CLOSE>']][:train_index], data[['<UP>', '<DOWN>', '<CLOSE>']][train_index:] 
-    y_train, y_test = data['<RSI>'][:train_index], data['<RSI>'][train_index:]
+    X_train, X_test = data[['<UP>', '<DOWN>', '<CLOSE>']][:train_index].fillna(0), data[['<UP>', '<DOWN>', '<CLOSE>']][train_index:len(data)].fillna(0)
+    y_train, y_test = data[['<RSI>']][:train_index].fillna(0).to_numpy(), data[['<RSI>']][train_index:len(data)].fillna(0).to_numpy()
 
-    X_train = X_train.fillna(0)
-    X_test = X_test.fillna(0)
+    scaler = MinMaxScaler(feature_range=(0, 1))
 
-    y_train = y_train.fillna(0)
-    y_test = y_test.fillna(0)
+    scaler.fit(X_train, y_train)
+
+    X_scaled = scaler.transform(X_train)
 
     model = SVR(kernel='linear', verbose=True)
 
-    model.fit(X_train, y_train)
+    model.fit(X_scaled, y_train)
     y_pred = model.predict(X_test)
 
     print(model.score(y_test, y_pred))
