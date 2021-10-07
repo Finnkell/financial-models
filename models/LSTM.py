@@ -75,7 +75,7 @@ model.compile(loss='mean_squared_error', optimizer='adam')
 
 model.fit(Xtrain, ytrain, epochs=1, validation_data=(Xtest, ytest), batch_size=160, verbose=True)
 
-train_pred = model.predict_on_batch(ytrain)
+train_pred = model.predict(ytrain)
 test_pred = model.predict(ytest)
 
 train_pred = np.c_[train_pred, np.zeros(train_pred.shape)] # concat

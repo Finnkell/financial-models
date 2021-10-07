@@ -1,12 +1,12 @@
-import keras
-from keras import layers, models, optimizers 
-from keras import backend as k
+import tensorflow.keras
+from tensorflow.keras import layers, models, optimizers 
+from tensorflow.keras import backend as k
 from collections import namedtuple, deque
-from keras.models import Sequential
-from keras.models import load_model
-from keras.layers import Dense
-from keras.optimizers import Adam
-from keras.activations import sigmoid
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import load_model
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.activations import sigmoid
 
 # Data visualization 
 import numpy as np
