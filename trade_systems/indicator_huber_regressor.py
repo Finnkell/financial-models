@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
 import MetaTrader5 as mt5
-from sklearn.linear_model import BayesianRidge
+from sklearn.linear_model import HuberRegressor
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -79,7 +79,7 @@ def dia_operar(date_now):
 
 
 def main():
-    data = pd.read_csv('database/R_OHLC_WIN$N_BMF_T.csv', sep=',')
+    data = pd.read_csv('database/OHLC_1SWIN$N_BMF_T.csv', sep=',')
 
     data = RSI(data, 2, '<CLOSE>')
 
@@ -89,18 +89,22 @@ def main():
 
     y['<RSI>'] = data['<RSI>']
     
-    data = data.drop(['<TICK>', '<VFL>', '<UP>', '<DOWN>', '<RSI>'], axis=1)
+    data = data.drop(['<TICK>', '<UP>', '<DOWN>', '<RSI>'], axis=1)
 
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaler.fit(data)
     data_scaled = pd.DataFrame(scaler.transform(data)).rename(columns={0: '<OPEN>', 1: '<HIGH>', 2: '<LOW>', 3: '<CLOSE>', 4: '<VOL>'}).fillna(0)
 
+    scaler_y = MinMaxScaler(feature_range=(0, 1))
+    scaler_y.fit(y)
+    y_scaled = pd.DataFrame(scaler_y.transform(y)).rename(columns={0: '<RSI>'}).fillna(0)
+
     train_index = int(data_scaled.shape[0] * (1 - 0.2))
 
     X_train, X_test = data_scaled[['<OPEN>', '<HIGH>', '<LOW>', '<CLOSE>', '<VOL>']][:train_index].fillna(0), data_scaled[['<OPEN>', '<HIGH>', '<LOW>', '<CLOSE>', '<VOL>']][train_index:len(data_scaled)].fillna(0)
-    y_train, y_test = y[['<RSI>']][:train_index].fillna(0), y[['<RSI>']][train_index:len(y)].fillna(0)
+    y_train, y_test = y_scaled[['<RSI>']][:train_index].fillna(0), y_scaled[['<RSI>']][train_index:len(y_scaled)].fillna(0)
 
-    model = BayesianRidge()
+    model = HuberRegressor()
 
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -132,58 +136,58 @@ def main():
                     pred = model.predict(scaled)
                     indicator.append(pred)
                     last_ohlc = ohlc
-                    print(pred)
+                    print(f"{datetime.now().hour}:{datetime.now().minute}:{datetime.now().second} | {pred}")
 
-                    if pred[0] >= 70:
-                        price = mt5.symbol_info('WINV21').ask
+                    if mt5.positions_get(symbol='WINV21') == ():
 
-                        request = {
-                            "action": mt5.TRADE_ACTION_DEAL,
-                            "symbol": 'WINV21',
-                            "volume": 1.0,
-                            "type": mt5.ORDER_TYPE_SELL,
-                            "price": price,
-                            "sl": price + 100,
-                            "tp": price - 200,
-                            "deviation": 1,
-                            "magic": 234000,
-                            "comment": "python script open",
-                            "type_time": mt5.ORDER_TIME_GTC,
-                            "type_filling": mt5.ORDER_FILLING_RETURN,
-                        }
+                        if pred[0] >= 70 and pred[0] <= 100:
+                            price = mt5.symbol_info('WINV21').bid
 
-                        mt5.order_send(request)
+                            request = {
+                                "action": mt5.TRADE_ACTION_DEAL,
+                                "symbol": 'WINV21',
+                                "volume": 1.0,
+                                "type": mt5.ORDER_TYPE_SELL,
+                                "price": price,
+                                "sl": price + 100,
+                                "tp": price - 200,
+                                "deviation": 1,
+                                "magic": 234000,
+                                "comment": "python script open",
+                                "type_time": mt5.ORDER_TIME_GTC,
+                                "type_filling": mt5.ORDER_FILLING_RETURN,
+                            }
 
-                    elif pred[0] <= 30:
-                        price = mt5.symbol_info('WINV21').bid
+                            mt5.order_send(request)
 
-                        request = {
-                            "action": mt5.TRADE_ACTION_DEAL,
-                            "symbol": 'WINV21',
-                            "volume": 1.0,
-                            "type": mt5.ORDER_TYPE_BUY,
-                            "price": price,
-                            "sl": price - 100,
-                            "tp": price + 200,
-                            "deviation": 1,
-                            "magic": 234000,
-                            "comment": "python script open",
-                            "type_time": mt5.ORDER_TIME_GTC,
-                            "type_filling": mt5.ORDER_FILLING_RETURN,
-                        }
+                        elif pred[0] <= 30 and pred[0] >= 0:
+                            price = mt5.symbol_info('WINV21').ask
 
-                        mt5.order_send(request)
+                            request = {
+                                "action": mt5.TRADE_ACTION_DEAL,
+                                "symbol": 'WINV21',
+                                "volume": 1.0,
+                                "type": mt5.ORDER_TYPE_BUY,
+                                "price": price,
+                                "sl": price - 100,
+                                "tp": price + 200,
+                                "deviation": 1,
+                                "magic": 234000,
+                                "comment": "python script open",
+                                "type_time": mt5.ORDER_TIME_GTC,
+                                "type_filling": mt5.ORDER_FILLING_RETURN,
+                            }
+
+                            mt5.order_send(request)
                 else:
                     pass
-        
-        
 
-        if (os.path.exists(f'plots/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}')):
+        if (os.path.exists(f'plots/huber/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}')):
             pass
         elif not saved:
             indicator = pd.DataFrame(indicator)
             indicator[0].plot()
-            plt.savefig(f'plots/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}.png')
+            plt.savefig(f'plots/huber/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}.png')
             saved = True
         else:
             pass
