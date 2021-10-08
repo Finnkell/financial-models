@@ -115,6 +115,7 @@ def main():
 
     server = MT5DataFeed()
 
+    have_position = False
     indicator = []
     saved = False
     last_ohlc = [(1,)]
@@ -136,9 +137,19 @@ def main():
                     pred = model.predict(scaled)
                     indicator.append(pred)
                     last_ohlc = ohlc
+                    pred = scaler_y.inverse_transform(pred.reshape(-1, 1))
+
                     print(f"{datetime.now().hour}:{datetime.now().minute}:{datetime.now().second} | {pred}")
 
-                    if mt5.positions_get(symbol='WINV21') == ():
+                    positions = mt5.positions_get(symbol='WINV21')
+                    
+                    for position in positions:
+                        if position.magic == 2222222:
+                            have_position = True
+                        else:
+                            have_position = False
+
+                    if not have_position:
 
                         if pred[0] >= 70 and pred[0] <= 100:
                             price = mt5.symbol_info('WINV21').bid
@@ -152,7 +163,7 @@ def main():
                                 "sl": price + 100,
                                 "tp": price - 200,
                                 "deviation": 1,
-                                "magic": 234000,
+                                "magic": 2222222,
                                 "comment": "python script open",
                                 "type_time": mt5.ORDER_TIME_GTC,
                                 "type_filling": mt5.ORDER_FILLING_RETURN,
@@ -172,7 +183,7 @@ def main():
                                 "sl": price - 100,
                                 "tp": price + 200,
                                 "deviation": 1,
-                                "magic": 234000,
+                                "magic": 2222222,
                                 "comment": "python script open",
                                 "type_time": mt5.ORDER_TIME_GTC,
                                 "type_filling": mt5.ORDER_FILLING_RETURN,
@@ -184,7 +195,7 @@ def main():
 
         if (os.path.exists(f'plots/huber/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}')):
             pass
-        elif not saved:
+        elif not saved and len(indicator) > 0:
             indicator = pd.DataFrame(indicator)
             indicator[0].plot()
             plt.savefig(f'plots/huber/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}.png')

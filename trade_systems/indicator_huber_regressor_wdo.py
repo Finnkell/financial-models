@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
 import MetaTrader5 as mt5
-from sklearn.linear_model import ARDRegression
+from sklearn.linear_model import HuberRegressor
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -62,10 +62,10 @@ class MT5DataFeed(object):
         mt5.initialize()
 
     def _get_ohlc(self):
-        return mt5.copy_rates_from('WINV21', mt5.TIMEFRAME_M1, datetime.now(), 100)
+        return mt5.copy_rates_from('WDOX21', mt5.TIMEFRAME_M1, datetime.now(), 100)
 
     def _get_volume(self):
-        return mt5.copy_ticks_from('WINV21', datetime.now(), 100, mt5.COPY_TICKS_TRADE)['volume']
+        return mt5.copy_ticks_from('WDOX21', datetime.now(), 100, mt5.COPY_TICKS_TRADE)['volume']
 
 
 def dia_operar(date_now):
@@ -79,7 +79,7 @@ def dia_operar(date_now):
 
 
 def main():
-    data = pd.read_csv('database/OHLC_1SWIN$N_BMF_T.csv', sep=',')
+    data = pd.read_csv('database/OHLC_WDO$N_BMF_T.csv', sep=',')
 
     data = RSI(data, 2, '<CLOSE>')
 
@@ -89,7 +89,7 @@ def main():
 
     y['<RSI>'] = data['<RSI>']
     
-    data = data.drop(['<TICK>', '<UP>', '<DOWN>', '<RSI>'], axis=1)
+    data = data.drop(['<TICK>', '<UP>', '<DOWN>', '<RSI>', '<VFL>'], axis=1)
 
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaler.fit(data)
@@ -104,7 +104,7 @@ def main():
     X_train, X_test = data_scaled[['<OPEN>', '<HIGH>', '<LOW>', '<CLOSE>', '<VOL>']][:train_index].fillna(0), data_scaled[['<OPEN>', '<HIGH>', '<LOW>', '<CLOSE>', '<VOL>']][train_index:len(data_scaled)].fillna(0)
     y_train, y_test = y_scaled[['<RSI>']][:train_index].fillna(0), y_scaled[['<RSI>']][train_index:len(y_scaled)].fillna(0)
 
-    model = ARDRegression()
+    model = HuberRegressor()
 
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -141,10 +141,10 @@ def main():
 
                     print(f"{datetime.now().hour}:{datetime.now().minute}:{datetime.now().second} | {pred}")
 
-                    positions = mt5.positions_get(symbol='WINV21')
+                    positions = mt5.positions_get(symbol='WDOX21')
                     
                     for position in positions:
-                        if position.magic == 1111111:
+                        if position.magic == 4444444:
                             have_position = True
                         else:
                             have_position = False
@@ -152,18 +152,18 @@ def main():
                     if not have_position:
 
                         if pred[0] >= 70 and pred[0] <= 100:
-                            price = mt5.symbol_info('WINV21').bid
+                            price = mt5.symbol_info('WDOX21').bid
 
                             request = {
                                 "action": mt5.TRADE_ACTION_DEAL,
-                                "symbol": 'WINV21',
+                                "symbol": 'WDOX21',
                                 "volume": 1.0,
                                 "type": mt5.ORDER_TYPE_SELL,
                                 "price": price,
-                                "sl": price + 100,
-                                "tp": price - 200,
+                                "sl": price + 5,
+                                "tp": price - 10,
                                 "deviation": 1,
-                                "magic": 1111111,
+                                "magic": 4444444,
                                 "comment": "python script open",
                                 "type_time": mt5.ORDER_TIME_GTC,
                                 "type_filling": mt5.ORDER_FILLING_RETURN,
@@ -172,18 +172,18 @@ def main():
                             mt5.order_send(request)
 
                         elif pred[0] <= 30 and pred[0] >= 0:
-                            price = mt5.symbol_info('WINV21').ask
+                            price = mt5.symbol_info('WDOX21').ask
 
                             request = {
                                 "action": mt5.TRADE_ACTION_DEAL,
-                                "symbol": 'WINV21',
+                                "symbol": 'WDOX21',
                                 "volume": 1.0,
                                 "type": mt5.ORDER_TYPE_BUY,
                                 "price": price,
-                                "sl": price - 100,
-                                "tp": price + 200,
+                                "sl": price - 5,
+                                "tp": price + 10,
                                 "deviation": 1,
-                                "magic": 1111111,
+                                "magic": 4444444,
                                 "comment": "python script open",
                                 "type_time": mt5.ORDER_TIME_GTC,
                                 "type_filling": mt5.ORDER_FILLING_RETURN,
@@ -193,16 +193,15 @@ def main():
                 else:
                     pass
 
-        if (os.path.exists(f'plots/ard/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}')):
+        if (os.path.exists(f'plots/huber_wdo/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}')):
             pass
         elif not saved and len(indicator) > 0:
             indicator = pd.DataFrame(indicator)
             indicator[0].plot()
-            plt.savefig(f'plots/ard/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}.png')
+            plt.savefig(f'plots/huber_wdo/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}.png')
             saved = True
         else:
             pass
-
 
 if __name__ == '__main__':
     try:
