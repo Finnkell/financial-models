@@ -65,7 +65,7 @@ class MT5DataFeed(object):
         return mt5.copy_rates_from('WDOX21', mt5.TIMEFRAME_M1, datetime.now(), 100)
 
     def _get_volume(self):
-        return mt5.copy_ticks_from('WDOX21', datetime.now(), 100, mt5.COPY_TICKS_TRADE)['volume']
+        return mt5.copy_ticks_range('WDOX21', 0, datetime.now(), mt5.COPY_TICKS_TRADE)['volume']
 
 
 def dia_operar(date_now):

@@ -62,10 +62,10 @@ class MT5DataFeed(object):
         mt5.initialize()
 
     def _get_ohlc(self):
-        return mt5.copy_rates_from('WINV21', mt5.TIMEFRAME_M1, datetime.now(), 100)
+        return mt5.copy_rates_from('WINZ21', mt5.TIMEFRAME_M1, datetime.now(), 100)
 
     def _get_volume(self):
-        return mt5.copy_ticks_from('WINV21', datetime.now(), 100, mt5.COPY_TICKS_TRADE)['volume']
+        return mt5.copy_ticks_range('WINZ21', 0, datetime.now(), mt5.COPY_TICKS_TRADE)['volume']
 
 
 def dia_operar(date_now):
@@ -141,7 +141,7 @@ def main():
 
                     print(f"{datetime.now().hour}:{datetime.now().minute}:{datetime.now().second} | {pred}")
 
-                    positions = mt5.positions_get(symbol='WINV21')
+                    positions = mt5.positions_get(symbol='WINZ21')
                     
                     for position in positions:
                         if position.magic == 1111111:
@@ -152,11 +152,11 @@ def main():
                     if not have_position:
 
                         if pred[0] >= 70 and pred[0] <= 100:
-                            price = mt5.symbol_info('WINV21').bid
+                            price = mt5.symbol_info('WINZ21').bid
 
                             request = {
                                 "action": mt5.TRADE_ACTION_DEAL,
-                                "symbol": 'WINV21',
+                                "symbol": 'WINZ21',
                                 "volume": 1.0,
                                 "type": mt5.ORDER_TYPE_SELL,
                                 "price": price,
@@ -172,11 +172,11 @@ def main():
                             mt5.order_send(request)
 
                         elif pred[0] <= 30 and pred[0] >= 0:
-                            price = mt5.symbol_info('WINV21').ask
+                            price = mt5.symbol_info('WINZ21').ask
 
                             request = {
                                 "action": mt5.TRADE_ACTION_DEAL,
-                                "symbol": 'WINV21',
+                                "symbol": 'WINZ21',
                                 "volume": 1.0,
                                 "type": mt5.ORDER_TYPE_BUY,
                                 "price": price,

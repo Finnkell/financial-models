@@ -65,7 +65,7 @@ class MT5DataFeed(object):
         return mt5.copy_rates_from('WINV21', mt5.TIMEFRAME_M1, datetime.now(), 100)
 
     def _get_volume(self):
-        return mt5.copy_ticks_from('WINV21', datetime.now(), 100, mt5.COPY_TICKS_TRADE)['volume']
+        return mt5.copy_ticks_range('WINV21', 0, datetime.now(), mt5.COPY_TICKS_TRADE)['volume']
 
 
 def dia_operar(date_now):
@@ -124,10 +124,14 @@ def main():
 
         while dia_operar(datetime.now()):
 
+
             saved = False
 
             ohlc = server._get_ohlc()
             volume = server._get_volume()
+
+            print(volume)
+
 
             if len(volume) == 0:
                 pass
@@ -192,7 +196,7 @@ def main():
                             mt5.order_send(request)
                 else:
                     pass
-
+                
         if (os.path.exists(f'plots/bayesian/indicator_{datetime.now().day}_{datetime.now().month}_{datetime.now().day}')):
             pass
         elif not saved and len(indicator) > 0:
